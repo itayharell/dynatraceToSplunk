@@ -1,0 +1,56 @@
+---
+- name: validate variables
+  fail:
+    msg: "one or more of the variables: dynatrace_base_url, env_id, dynatrace_token, hec_token, profile_name or management_zone_id is missing"
+  when: dynatrace_base_url == '' or env_id == '' or dynatrace_token == '' or hec_token == '' or profile_name == '' or management_zone_id == ''
+
+- name: create alerting profile that notifies imidiatly for any problem
+  uri:
+    url: "https://{{ dynatrace_base_url }}/e/{{ env_id }}/api/config/v1/alertingProfiles"
+    method: POST
+    headers:
+      Authorization: "Api-Token {{ dynatrace_token }}"
+    body: "{{ lookup('template', 'imidiateProfile.j2') }}"
+    body_format: json
+    status_code:
+      - 200
+      - 201
+    validate_certs: no
+    return_content: yes
+  register: alertProfile
+
+- name: save alert profile id
+  set_fact:
+    alerting_profile_id: "{{ alertProfile.json.id }}"
+
+- name: validate problem notification for the created alert profile
+  uri:
+    url: "https://{{ dynatrace_base_url }}/e/{{ env_id }}/api/config/v1/notifications/validator"
+    method: POST
+    headers: 
+      Authorization: "Api-Token {{ dynatrace_token }}"
+    body: "{{ lookup('template', 'notificationProfile.j2') }}"
+    body_format: json
+    validate_certs: no
+    status_code:
+      - 204
+  register: result
+  ignore_errors: yes
+
+- name: fail if wrong return code.
+  fail:
+    msg: "The problem notification is not valid. verify the dynatrace token, base url and env id."
+  when: result.status != 204
+
+- name: creates problem notification for the created alert profile
+  uri:
+    url: "https://{{ dynatrace_base_url }}/e/{{ env_id }}/api/config/v1/notifications"
+    method: POST
+    headers: 
+      Authorization: "Api-Token {{ dynatrace_token }}"
+    body: "{{ lookup('template', 'notificationProfile.j2') }}"
+    body_format: json
+    validate_certs: no
+    status_code:
+      - 200
+      - 201

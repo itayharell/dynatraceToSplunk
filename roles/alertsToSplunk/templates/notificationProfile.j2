@@ -1,0 +1,13 @@
+{
+"name": "{{ profile_name }}",
+"alertingProfile": "{{ alerting_profile_id }}",
+"active": true,
+"type": "WEBHOOK",
+"url": "https://{{ splunk_injest_url }}:8088/services/collector/event",
+"acceptAnyCertificate": true,
+"payload": "{ \"event\" : {\n\"ProblemDetails\": {ProblemDetailsJSON},    \n\"ProblemURL\": \"{ProblemURL}\"\n}\n}" ,
+"headers": [{
+"name" : "Authorization",
+"value": "Splunk {{ hec_token }}"}
+]
+}
